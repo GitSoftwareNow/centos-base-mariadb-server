@@ -1,0 +1,72 @@
+#
+# MariaDB Dockerfile
+#
+# https://github.com/dockerfile/mariadb
+#
+
+# Pull base image.
+FROM centos:8
+
+
+ENV MARIADB_MAJOR 10.5
+ENV MARIADB_VERSION 10.5.6
+ENV MYSQL_ROOT_PASSWORD mysecretpassword
+ENV MYSQL_DATADIR /var/lib/mysq
+
+# Install build tools
+RUN \
+  dnf update -y &&\
+  dnf -y install gcc gcc-c++ automake autoconf libtool make cmake gnutls \
+  gnutls-devel ncurses ncurses-devel openssl-devel bison \
+  libgcrypt-devel perl libxml2-devel zlib-devel libaio-devel lz4-devel lzo-devel \
+  systemd-devel snappy bzip2-devel libcurl-devel boost-devel *zstd* snappy diffutils \
+  java-1.8.0-openjdk java-1.8.0-openjdk-headless net-tools wget tar &&\
+  dnf clean all &&\
+  wget -c https://mirrors.ustc.edu.cn/mariadb/mariadb-10.5.6/source/mariadb-10.5.6.tar.gz &&\
+  tar -xvf mariadb-10.5.6.tar.gz &&\
+  cd mariadb-10.5.6 && \
+  mkdir build && \
+  cd build && \
+  cmake \
+  -DCMAKE_INSTALL_PREFIX=/usr \
+  -DMYSQL_DATADIR=/usr/local/mariadb/data \
+  -DSYSCONFDIR=/etc \
+  -DWITHOUT_TOKUDB=1 \
+  -DWITH_INNOBASE_STORAGE_ENGINE=1 \
+  -DWITH_ARCHIVE_STPRAGE_ENGINE=1 \
+  -DWITH_BLACKHOLE_STORAGE_ENGINE=1 \
+  -DWIYH_READLINE=1 \
+  -DWIYH_SSL=system \
+  -DVITH_ZLIB=system \
+  -DWITH_LOBWRAP=0 \
+  -DMYSQL_UNIX_ADDR=/tmp/mysql.sock \
+  -DDEFAULT_CHARSET=utf8 \
+  -DDEFAULT_COLLATION=utf8_general_ci .. && \
+  make  -j4 && \
+  make install && \
+  groupadd -r mysql && useradd -r -g mysql mysql &&\
+  mkdir -p /var/lib/mysql && \
+  mkdir -p /var/log/mysql && \
+  chown mysql:mysql /var/log/mysql
+
+RUN rm -rf /mariadb*
+    
+
+# Define mountable directories.
+VOLUME ["/etc/mysql", "/var/lib/mysql"]
+
+
+#COPY docker-entrypoint.sh /usr/local/bin/
+#RUN ln -s usr/local/bin/docker-entrypoint.sh / # backwards compat
+#ENTRYPOINT ["docker-entrypoint.sh"]
+
+# Define working directory.
+WORKDIR /data
+
+
+# Expose ports.
+EXPOSE 3306
+
+# Define default command.
+CMD ["mysqld_safe"]
+
